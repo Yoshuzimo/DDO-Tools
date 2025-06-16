@@ -3,10 +3,11 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow read and write access for all authenticated users.
-    // For production, you'll want more granular rules.
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+    // Character images are stored at users/{userId}/characters/{characterId}/profileImage.png
+    // Allow read and write access only to the authenticated user who owns the folder.
+    match /users/{userId}/{allPaths=**} {
+      allow read: if request.auth != null; // Allow authenticated users to read images (e.g. if URLs are public)
+      allow write: if request.auth != null && request.auth.uid == userId; // Only owner can write
     }
   }
 }

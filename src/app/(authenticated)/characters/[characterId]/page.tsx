@@ -24,3 +24,4 @@ export default async function CharacterPage({ params: paramsFromProps }: { param
   
   return <CharacterDetailClient characterIdFromPage={characterId} />;
 }
+

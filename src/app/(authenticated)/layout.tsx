@@ -5,102 +5,68 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/hooks/useAuthContext';
-import { Dices, AlertTriangle, ShieldCheck, LogOut, Home, User, FileUp } from 'lucide-react';
+import { Dices, AlertTriangle, ShieldCheck, LogOut, Home, User, FileUp, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { signOut as signOutAction } from '@/actions/auth'; // Renamed signOut to signOutAction
+import { signOut as signOutAction } from '@/actions/auth';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AuthenticatedLayout({ children }: { children: ReactNode }) {
   const { user, loading: authContextLoading, isFirebaseInitialized } = useAuthContext();
   const router = useRouter();
   const { toast } = useToast();
-  const [isVerifying, setIsVerifying] = useState(true);
+  
   const [isAdmin, setIsAdmin] = useState(false);
   const [claimsLoading, setClaimsLoading] = useState(true);
 
   useEffect(() => {
-    // console.log('[AuthenticatedLayout] useEffect (main) triggered. AuthContext state:', { user: user?.uid, authContextLoading, isFirebaseInitialized, isVerifying}); // Debug
-    if (!authContextLoading && isFirebaseInitialized) {
-      if (user) {
-        // console.log('[AuthenticatedLayout] User is present. Setting isVerifying to false.'); // Debug
-        if (isVerifying) setIsVerifying(false);
-      } else {
-        if (!isVerifying) {
-            // console.log('[AuthenticatedLayout] No user and not verifying. Redirecting to /auth/login.'); // Debug
-            router.push('/auth/login');
-        } else {
-            // console.log('[AuthenticatedLayout] No user, but still verifying. Waiting for verification timeout or change.'); // Debug
-        }
-      }
-    } else if (!authContextLoading && !isFirebaseInitialized) {
-        // console.error('[AuthenticatedLayout] Firebase not initialized. isVerifying to false.');
-        if (isVerifying) setIsVerifying(false);
-    } else if (authContextLoading) {
-        // console.log('[AuthenticatedLayout] Auth context still loading...'); // Debug
+    // console.log('[AuthenticatedLayout] Main useEffect. Auth State:', { user: user?.uid, authContextLoading, isFirebaseInitialized });
+    if (!authContextLoading && isFirebaseInitialized && !user) {
+      // console.log('[AuthenticatedLayout] No user, Firebase initialized, auth not loading. Redirecting to /auth/login.');
+      router.push('/auth/login');
     }
-  }, [user, authContextLoading, router, isFirebaseInitialized, isVerifying]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    // console.log('[AuthenticatedLayout] useEffect (verification timer) triggered. Current state:', { authContextLoading, isFirebaseInitialized, userPresent: !!user, isVerifying }); // Debug
-    if (!authContextLoading && isFirebaseInitialized && !user && isVerifying) {
-      // console.log('[AuthenticatedLayout] Starting verification timeout (1s) because no user and auth is ready.'); // Debug
-      timer = setTimeout(() => {
-        // console.log('[AuthenticatedLayout] Verification timeout ELAPSED. Setting isVerifying to false.'); // Debug
-        setIsVerifying(false); 
-      }, 1000); 
-    } else if (isVerifying && (user || !isFirebaseInitialized || authContextLoading)) {
-      // console.log('[AuthenticatedLayout] Condition met to set isVerifying false early (user present, or firebase not init, or auth loading).'); // Debug
-      setIsVerifying(false);
-    }
-    
-    return () => {
-      if (timer) {
-        // console.log('[AuthenticatedLayout] Clearing verification timeout.'); // Debug
-        clearTimeout(timer);
-      }
-    };
-  }, [authContextLoading, isFirebaseInitialized, user, isVerifying]);
+  }, [user, authContextLoading, isFirebaseInitialized, router]);
 
   useEffect(() => {
     if (user) {
       setClaimsLoading(true);
-      // console.log(`[AuthenticatedLayout] User ${user.uid} detected. Fetching ID token result for custom claims...`); // Debug
+      // console.log(`[AuthenticatedLayout] User ${user.uid} detected. Fetching ID token result...`);
       user.getIdTokenResult()
         .then((idTokenResult) => {
-          // console.log(`[AuthenticatedLayout] ID token result for ${user.uid}:`, idTokenResult.claims); // Debug
+          // console.log(`[AuthenticatedLayout] ID token result for ${user.uid}:`, idTokenResult.claims);
           if (idTokenResult.claims.admin === true) {
-            // console.log(`[AuthenticatedLayout] User ${user.uid} has 'admin: true' claim.`); // Debug
+            // console.log(`[AuthenticatedLayout] User ${user.uid} is admin.`);
             setIsAdmin(true);
           } else {
-            // console.log(`[AuthenticatedLayout] User ${user.uid} does NOT have 'admin: true' claim.`); // Debug
+            // console.log(`[AuthenticatedLayout] User ${user.uid} is NOT admin.`);
             setIsAdmin(false);
           }
-          setClaimsLoading(false);
         })
         .catch((error) => {
           console.error("[AuthenticatedLayout] Error getting ID token result for custom claims:", error);
           setIsAdmin(false);
+        })
+        .finally(() => {
           setClaimsLoading(false);
+          // console.log(`[AuthenticatedLayout] Claims loading finished. isAdmin: ${isAdmin}`);
         });
     } else {
-      // console.log('[AuthenticatedLayout] No user present, setting isAdmin to false and claimsLoading to false.'); // Debug
+      // console.log('[AuthenticatedLayout] No user, setting isAdmin to false, claimsLoading to false.');
       setIsAdmin(false);
-      setClaimsLoading(false); 
+      setClaimsLoading(false);
     }
-  }, [user]);
+  }, [user]); // Dependency: only user
 
   const handleSignOut = async () => {
-    // console.log('[AuthenticatedLayout] handleSignOut called.'); // Debug
-    const result = await signOutAction(); // Use renamed action
+    // console.log('[AuthenticatedLayout] handleSignOut called.');
+    const result = await signOutAction();
     if (result.success && result.redirectPath) {
-      // console.log('[AuthenticatedLayout] SignOut action successful, redirecting to:', result.redirectPath); // Debug
+      // console.log('[AuthenticatedLayout] SignOut action successful, redirecting to:', result.redirectPath);
       router.push(result.redirectPath);
     } else if (!result.success && result.message) {
-      // console.error("[AuthenticatedLayout] SignOut action failed:", result.message); // Debug
+      // console.error("[AuthenticatedLayout] SignOut action failed:", result.message);
       toast({ title: "Sign Out Failed", description: result.message, variant: "destructive" });
     } else {
-      // console.log('[AuthenticatedLayout] SignOut action result not conclusive, redirecting to /auth/login as fallback.'); // Debug
+      // console.log('[AuthenticatedLayout] SignOut action result not conclusive, redirecting to /auth/login.');
       router.push('/auth/login');
     }
   };
@@ -110,7 +76,7 @@ export default function AuthenticatedLayout({ children }: { children: ReactNode 
   const destructiveButtonStyle = `${navButtonBaseClasses} bg-destructive text-destructive-foreground hover:bg-destructive/90`;
 
   if (authContextLoading) {
-    // console.log('[AuthenticatedLayout] Rendering: AuthContext Loading screen.'); // Debug
+    // console.log('[AuthenticatedLayout] Rendering: AuthContext Loading screen.');
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
         <Dices className="h-16 w-16 animate-spin text-primary" />
@@ -131,19 +97,12 @@ export default function AuthenticatedLayout({ children }: { children: ReactNode 
       </div>
     );
   }
-
-  if (isVerifying && !user) { 
-    // console.log('[AuthenticatedLayout] Rendering: Verifying Session screen.'); // Debug
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
-        <ShieldCheck className="h-16 w-16 animate-pulse text-accent" />
-        <p className="mt-4 text-lg font-headline">Verifying Session...</p>
-      </div>
-    );
-  }
   
-  if (!user) {
-    // console.log('[AuthenticatedLayout] Rendering: No User, (should be) redirecting to Login screen.'); // Debug
+  if (!user && !authContextLoading && isFirebaseInitialized) {
+    // This state means auth is resolved, Firebase is initialized, but there's no user.
+    // The useEffect above should be handling the redirect.
+    // Show a generic loading/redirecting message.
+    // console.log('[AuthenticatedLayout] Rendering: No User, redirecting to Login screen.');
     return ( 
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
         <Dices className="h-16 w-16 animate-spin text-primary" />
@@ -151,8 +110,12 @@ export default function AuthenticatedLayout({ children }: { children: ReactNode 
       </div>
     );
   }
+  
+  // If user object exists but we are still claimsLoading for some reason, show a specific loader for nav area
+  // Or simply let the nav render without the admin link until claimsLoading is false.
+  // For simplicity, the admin link will just not appear while claimsLoading is true.
 
-  // console.log(`[AuthenticatedLayout] Rendering children for authenticated user: ${user.uid}. Admin status: ${isAdmin}, Claims loading: ${claimsLoading}`); // Debug
+  // console.log(`[AuthenticatedLayout] Rendering children for authenticated user: ${user?.uid}. Admin: ${isAdmin}, ClaimsLoading: ${claimsLoading}`);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -165,23 +128,34 @@ export default function AuthenticatedLayout({ children }: { children: ReactNode 
             </span>
           </Link>
           <nav className="flex flex-1 items-center space-x-2 md:space-x-4">
-            <Link href="/dashboard" className={navButtonStyle}>
-              <Home className="mr-2 h-4 w-4" /> Dashboard
-            </Link>
-            <Link href="/account" className={navButtonStyle}>
-              <User className="mr-2 h-4 w-4" /> Account
-            </Link>
-            {isAdmin && !claimsLoading && (
-              <Link href="/admin/import-quests" className={navButtonStyle}>
-                <FileUp className="mr-2 h-4 w-4" /> Admin Import
-              </Link>
+            {user && ( // Ensure user exists before rendering these links
+              <>
+                <Link href="/dashboard" className={navButtonStyle}>
+                  <Home className="mr-2 h-4 w-4" /> Dashboard
+                </Link>
+                <Link href="/account" className={navButtonStyle}>
+                  <User className="mr-2 h-4 w-4" /> Account
+                </Link>
+                {claimsLoading && (
+                  <div className="flex items-center justify-center px-4 py-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                {!claimsLoading && isAdmin && (
+                  <Link href="/admin/import-quests" className={navButtonStyle}>
+                    <FileUp className="mr-2 h-4 w-4" /> Admin Import
+                  </Link>
+                )}
+              </>
             )}
           </nav>
-          <div className="flex items-center space-x-2 md:space-x-4">
-            <button onClick={handleSignOut} className={destructiveButtonStyle}>
-              <LogOut className="mr-2 h-4 w-4" /> Sign Out
-            </button>
-          </div>
+          {user && ( // Ensure user exists for sign out button
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <button onClick={handleSignOut} className={destructiveButtonStyle}>
+                <LogOut className="mr-2 h-4 w-4" /> Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </header>
       <main className="flex-grow container mx-auto px-4 py-8">
@@ -193,4 +167,3 @@ export default function AuthenticatedLayout({ children }: { children: ReactNode 
     </div>
   );
 }
-

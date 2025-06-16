@@ -1,23 +1,26 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    match /users/{userId} {
-      // Allow the user to read/write their own user document
+
+    // User-specific character data
+    // Users can only create, read, update, or delete characters under their own user ID.
+    match /users/{userId}/characters/{characterId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // Subcollection: characters
-      match /characters/{characterId} {
-        // TEMPORARY: Allow ANY authenticated user to list characters for ANY user for debugging
-        allow list: if request.auth != null;
-        // Individual document read/write still requires matching userId
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
     }
 
-    // Rule for top-level 'accounts' collection
-    match /accounts/{accountId} {
-       allow read, write: if request.auth != null && request.auth.uid == accountId;
+    // User-specific account data
+    // Users can only read or write their own account document.
+    match /accounts/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Add rules for any other collections here if needed.
+    // Example: Publicly readable quest data (if it were in Firestore, but it's currently in config)
+    // match /quests/{questId} {
+    //   allow read: if true; // Anyone can read
+    //   allow write: if request.auth.token.admin == true; // Only admins can write
+    // }
   }
 }
