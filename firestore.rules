@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    match /users/{userId} {
+      // Allow the user to read/write their own user document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Subcollection: characters
+      match /characters/{characterId} {
+        // TEMPORARY: Allow ANY authenticated user to list characters for ANY user for debugging
+        allow list: if request.auth != null;
+        // Individual document read/write still requires matching userId
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Rule for top-level 'accounts' collection
+    match /accounts/{accountId} {
+       allow read, write: if request.auth != null && request.auth.uid == accountId;
+    }
+  }
+}

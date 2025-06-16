@@ -1,0 +1,57 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Netlify
+.netlify
+
+# studio
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Git 
+/.git/
+
+# Key File
+ddo-tools-7f3aa-firebase-adminsdk-fbsvc-6942fd3cf2.json
+
+# Commit Batch File
+Commit.bat
+run-dev.site.bat
+start-emulators.bat
